@@ -1,0 +1,118 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: denuncias-govierno
+  labels:
+    app: denuncias-govierno
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: denuncias-govierno
+  template:
+    metadata:
+      labels:
+        app: denuncias-govierno
+    spec:
+      containers:
+      - name: denuncias-govierno
+        image: marketshop/sharetribe:latest
+        ports:
+        - containerPort: 3000
+        imagePullPolicy: Always
+        env:
+          - name: DB_HOST
+            value: "mysql-single.databases"
+          - name: DB_USER
+            valueFrom:
+              secretKeyRef:
+                name: mysql-secret
+                key: DB_USER
+          - name: DB_PASS
+            valueFrom:
+              secretKeyRef:
+                name: mysql-secret
+                key: DB_PASS
+          - name: DB_DATABASE
+            value: "denuncias_govierno"
+          - name: redis_host
+            value: "redis-master.govierno"
+          - name: CONFIG_DOMAIN
+            value: "denuncias.govierno.cl"
+          - name: S3_BUCKET
+            valueFrom:
+              secretKeyRef:
+                name: s3-bucket-secret
+                key: S3_BUCKET
+          - name: S3_REGION
+            value: "us-east-1"
+          - name: S3_ID
+            valueFrom:
+              secretKeyRef:
+                name: s3-bucket-secret
+                key: S3_ID
+          - name: S3_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: s3-bucket-secret
+                key: S3_SECRET
+          - name: MAIL_HOST
+            value: "email-smtp.us-east-1.amazonaws.com"
+          - name: MAIL_PORT
+            value: "587"
+          - name: MAIL_USER
+            valueFrom:
+              secretKeyRef:
+                name: mail-secret
+                key: MAIL_USER
+          - name: MAIL_PASS
+            valueFrom:
+              secretKeyRef:
+                name: mail-secret
+                key: MAIL_PASS
+          - name: MAIL_DOMAIN
+            value: "govierno.cl"
+          - name: MAIL_FROM
+            valueFrom:
+              secretKeyRef:
+                name: mail-secret
+                key: MAIL_FROM
+          - name: GOOGLE_MAPS_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: mail-secret
+                key: GOOGLE_MAPS_API_KEY
+          - name: CLP_STATIC_PAGE_ENABLED
+            value: "false"
+---        
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: denuncias-govierno
+  annotations:
+    kubernetes.io/ingress.class: traefik
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+spec:
+  rules:
+    - host: denuncias.govierno.cl
+      http:
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: denuncias-govierno
+                port:
+                  number: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: denuncias-govierno
+spec:
+  selector:
+    app: denuncias-govierno
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3000
