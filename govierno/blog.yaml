@@ -1,0 +1,73 @@
+#https://github.com/bitnami/charts/blob/master/bitnami/ghost/values.yaml
+commonAnnotations: {}
+clusterDomain: marketshop.local
+extraDeploy: []
+image:
+  registry: docker.io
+  repository: bitnami/ghost
+  tag: 5.26.1-debian-11-r0
+  pullPolicy: IfNotPresent
+  debug: true
+
+ghostHost: "blog.govierno.cl"
+ghostUsername: hola
+existingSecret: "ghost-password"
+ghostEmail: chile@govierno.cl
+ghostBlogTitle: Blog del Gobierno de Chile
+ghostEnableHttps: true
+smtpHost: "email-smtp.us-east-1.amazonaws.com"
+smtpPort: "587"
+smtpUser: "AKIA6FU6J3MOZIRPKMJK"
+smtpService: ""
+smtpProtocol: ""
+smtpExistingSecret: "blog-ghost-smtp"
+allowEmptyPassword: true
+#Cambiar la primera vez que se instala
+ghostSkipInstall: false
+nodeSelector:
+  node: node2
+
+replicaCount: 1
+
+ingress:
+  enabled: true
+  pathType: ImplementationSpecific
+  hostname: blog.govierno.cl
+  path: /
+  annotations:
+    kubernetes.io/ingress.class: traefik
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    cert-manager.io/issuer: http-issuer
+  tls: true
+  selfSigned: true
+  tls:
+    - secretName: blog.govierno.cl
+      hosts:
+        - blog.govierno.cl
+
+service:
+  type: ClusterIP
+  annotations:
+    traefik.ingress.kubernetes.io/service.serversscheme: http
+  ports:
+    http: 80
+    https: 443
+
+persistence:
+  enabled: true
+  storageClass: local-path
+  annotations: {}
+  size: 8Gi
+
+volumePermissions:
+  enabled: true
+
+mysql:
+  enabled: false
+
+externalDatabase:
+  host: mysql-single.databases
+  port: 3306
+  user: nmella
+  existingSecret: "blog-govierno-mysql"
+  database: blog_govierno
