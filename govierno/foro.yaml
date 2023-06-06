@@ -1,0 +1,66 @@
+## https://github.com/bitnami/charts/blob/master/bitnami/discourse/values.yaml
+
+clusterDomain: marketshop.local
+
+image:
+  registry: docker.io
+  repository: bitnami/discourse
+  tag: 3.0.3-debian-11-r11
+  pullPolicy: Always
+
+auth:
+  email: chile@govierno.cl
+  username: chile
+  existingSecret: "discourse-auth-secret"
+
+host: "foro.govierno.cl"
+siteName: 'Foro Govierno de Shile'
+smtp:
+  enabled: true
+  host: "email-smtp.us-east-1.amazonaws.com"
+  port: "587"
+  user: "AKIA6FU6J3MOZIRPKMJK"
+  protocol: "tls"
+  auth: ""
+  existingSecret: "discourse-smtp-secret"
+replicaCount: 1
+
+discourse:
+  skipInstall: false
+
+persistence:
+  enabled: true
+  storageClass: "local-path"
+  accessModes:
+    - ReadWriteOnce
+  accessMode: ReadWriteOnce
+  size: 80Gi
+  existingClaim: ""
+
+ingress:
+  enabled: true
+  pathType: ImplementationSpecific
+  hostname: foro.govierno.cl
+  path: /
+  annotations:
+    kubernetes.io/ingress.class: traefik
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+
+postgresql:
+  enabled: false
+
+externalDatabase:
+  host: postgres-15-single-postgresql.databases
+  port: 5432
+  user: postgres
+  database: foro_govierno
+  existingSecret: "discourse-govierno-database"
+  create: false
+
+redis:
+  enabled: true
+  auth:
+    enabled: false
+    password: ""
+    existingSecret: ""
+  architecture: standalone
