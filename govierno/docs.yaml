@@ -1,0 +1,30 @@
+replicaCount: 1
+revisionHistoryLimit: 10
+
+image:
+  repository: requarks/wiki
+  imagePullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: true
+  className: ""
+  annotations:
+    kubernetes.io/ingress.class: traefik
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+  hosts:
+    - host: docs.govierno.cl
+      paths:
+        - path: "/"
+          pathType: Prefix
+postgresql:
+  enabled: false
+  postgresqlHost: postgres-15-single-postgresql.databases
+  postgresqlUser: postgres
+  postgresqlDatabase: docs_govierno
+  existingSecret: wiki-js
+  existingSecretKey: POSTGRES_PASSWORD
+  ssl: "false"
