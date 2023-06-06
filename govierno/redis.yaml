@@ -1,0 +1,17 @@
+clusterDomain: marketshop.local
+
+architecture: standalone
+
+global:
+  storageClass: 'local-path'
+
+auth:
+  enabled: false
+
+master:
+  persistence:
+    enable: false
+  disableCommands: []
+
+replica:
+  disableCommands: []
