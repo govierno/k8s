@@ -1,0 +1,289 @@
+# https://github.com/apache/superset/blob/master/helm/superset/values.yaml
+runAsUser: 0
+
+extraEnv:
+  GUNICORN_TIMEOUT: 300
+  SERVER_WORKER_AMOUNT: 16
+  # Different gunicorn settings, refer to the gunicorn documentation
+  # https://docs.gunicorn.org/en/stable/settings.html#
+  # These variables are used as Flags at the gunicorn startup
+  # https://github.com/apache/superset/blob/master/docker/run-server.sh#L22
+  # Extend timeout to allow long running queries.
+  # GUNICORN_TIMEOUT: 300
+  # Increase the gunicorn worker amount, can improve performance drastically
+  # See: https://docs.gunicorn.org/en/stable/design.html#how-many-workers
+  # SERVER_WORKER_AMOUNT: 4
+  # WORKER_MAX_REQUESTS: 0
+  # WORKER_MAX_REQUESTS_JITTER: 0
+  # SERVER_THREADS_AMOUNT: 20
+  # GUNICORN_KEEPALIVE: 2
+  # SERVER_LIMIT_REQUEST_LINE: 0
+  # SERVER_LIMIT_REQUEST_FIELD_SIZE: 0
+
+  # OAUTH_HOME_DOMAIN: ..
+  # # If a whitelist is not set, any address that can use your OAuth2 endpoint will be able to login.
+  # #   this includes any random Gmail address if your OAuth2 Web App is set to External.
+  # OAUTH_WHITELIST_REGEX: ...
+
+
+extraSecretEnv:
+  {}
+  # MAPBOX_API_KEY: ...
+  # # Google API Keys: https://console.cloud.google.com/apis/credentials
+  # GOOGLE_KEY: ...
+  # GOOGLE_SECRET: ...
+
+# -- Extra files to mount on `/app/pythonpath`
+extraConfigs:
+  {}
+  # import_datasources.yaml: |
+  #     databases:
+  #     - allow_file_upload: true
+  #       allow_ctas: true
+  #       allow_cvas: true
+  #       database_name: example-db
+  #       extra: "{\r\n    \"metadata_params\": {},\r\n    \"engine_params\": {},\r\n    \"\
+  #         metadata_cache_timeout\": {},\r\n    \"schemas_allowed_for_file_upload\": []\r\n\
+  #         }"
+  #       sqlalchemy_uri: example://example-db.local
+  #       tables: []
+
+
+configOverrides:
+  public_role: |
+    PUBLIC_ROLE_LIKE = "Gamma"
+    PUBLIC_ROLE_LIKE_GAMMA = True
+    WTF_CSRF_ENABLED = False
+    GUEST_ROLE_NAME = "Gamma"
+    SUPERSET_WEBSERVER_TIMEOUT = 300
+    CACHE_DEFAULT_TIMEOUT = 31536000
+    D3_FORMAT = [
+      {
+        "decimal": ".",
+        "thousands": ",",
+        "grouping": [3],
+        "currency": ["$", ""]
+      }
+    ]
+  # enable_oauth: |
+  #   from flask_appbuilder.security.manager import (AUTH_DB, AUTH_OAUTH)
+  #   AUTH_TYPE = AUTH_OAUTH
+  #   OAUTH_PROVIDERS = [
+  #       {
+  #           "name": "google",
+  #           "whitelist": [ os.getenv("OAUTH_WHITELIST_REGEX", "") ],
+  #           "icon": "fa-google",
+  #           "token_key": "access_token",
+  #           "remote_app": {
+  #               "client_id": os.environ.get("GOOGLE_KEY"),
+  #               "client_secret": os.environ.get("GOOGLE_SECRET"),
+  #               "api_base_url": "https://www.googleapis.com/oauth2/v2/",
+  #               "client_kwargs": {"scope": "email profile"},
+  #               "request_token_url": None,
+  #               "access_token_url": "https://accounts.google.com/o/oauth2/token",
+  #               "authorize_url": "https://accounts.google.com/o/oauth2/auth",
+  #               "authorize_params": {"hd": os.getenv("OAUTH_HOME_DOMAIN", "")}
+  #           }
+  #       }
+  #   ]
+  #   # Map Authlib roles to superset roles
+  #   AUTH_ROLE_ADMIN = 'Admin'
+  #   AUTH_ROLE_PUBLIC = 'Public'
+  #   # Will allow user self registration, allowing to create Flask users from Authorized User
+  #   AUTH_USER_REGISTRATION = True
+  #   # The default user self registration role
+  #   AUTH_USER_REGISTRATION_ROLE = "Admin"
+  # secret: |
+  #   # Generate your own secret key for encryption. Use openssl rand -base64 42 to generate a good key
+  #   SECRET_KEY = 'YOUR_OWN_RANDOM_GENERATED_SECRET_KEY'
+
+image:
+  repository: marketshop/gov-superset
+  tag: latest
+  pullPolicy: Always
+
+ingress:
+  enabled: true
+  annotations:
+    kubernetes.io/ingress.class: traefik
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+  path: /
+  pathType: ImplementationSpecific
+  hosts:
+    - datos-abiertos.govierno.cl
+
+supersetNode:
+  replicaCount: 1
+  # -- Startup command
+  # @default -- See `values.yaml`
+  command:
+    - "/bin/sh"
+    - "-c"
+    - ". {{ .Values.configMountPath }}/superset_bootstrap.sh; /usr/bin/run-server.sh"
+  connections:
+    # -- Change in case of bringing your own redis and then also set redis.enabled:false
+    redis_host: '{{ template "superset.fullname" . }}-redis-headless'
+    # redis_password: superset
+    redis_port: "6379"
+    # You need to change below configuration incase bringing own PostgresSQL instance and also set postgresql.enabled:false
+    db_host: '{{ template "superset.fullname" . }}-postgresql'
+    db_port: "5432"
+    db_user: superset
+    db_pass: superset
+    db_name: superset
+  env: {}
+  # -- If true, forces deployment to reload on each upgrade
+  forceReload: false
+  # -- Init containers
+  # @default -- a container waiting for postgres
+  initContainers:
+    - name: wait-for-postgres
+      image: "{{ .Values.initImage.repository }}:{{ .Values.initImage.tag }}"
+      imagePullPolicy: "{{ .Values.initImage.pullPolicy }}"
+      envFrom:
+        - secretRef:
+            name: "{{ tpl .Values.envFromSecret . }}"
+      command:
+        - /bin/sh
+        - -c
+        - dockerize -wait "tcp://$DB_HOST:$DB_PORT" -timeout 120s
+  # -- Annotations to be added to supersetNode deployment
+  deploymentAnnotations: {}
+  # -- Annotations to be added to supersetNode pods
+  podAnnotations: {}
+  # -- Labels to be added to supersetNode pods
+  podLabels: {}
+  
+supersetWorker:
+  replicaCount: 1
+  # -- Worker startup command
+  # @default -- a `celery worker` command
+  command:
+    - "/bin/sh"
+    - "-c"
+    - ". {{ .Values.configMountPath }}/superset_bootstrap.sh; celery --app=superset.tasks.celery_app:app worker"
+  # -- If true, forces deployment to reload on each upgrade
+  forceReload: false
+  # -- Init container
+  # @default -- a container waiting for postgres and redis
+  initContainers:
+    - name: wait-for-postgres-redis
+      image: "{{ .Values.initImage.repository }}:{{ .Values.initImage.tag }}"
+      imagePullPolicy: "{{ .Values.initImage.pullPolicy }}"
+      envFrom:
+        - secretRef:
+            name: "{{ tpl .Values.envFromSecret . }}"
+      command:
+        - /bin/sh
+        - -c
+        - dockerize -wait "tcp://$DB_HOST:$DB_PORT" -wait "tcp://$REDIS_HOST:$REDIS_PORT" -timeout 120s
+  # -- Annotations to be added to supersetWorker deployment
+  
+
+supersetCeleryBeat:
+  enabled: false
+
+supersetCeleryFlower:
+  enabled: false
+
+supersetWebsockets:
+  enabled: false
+
+init:
+  resources:
+  command:
+    - "/bin/sh"
+    - "-c"
+    - ". {{ .Values.configMountPath }}/superset_bootstrap.sh; . {{ .Values.configMountPath }}/superset_init.sh"
+  enabled: true
+  loadExamples: false
+  createAdmin: true
+  adminUser:
+    username: admin
+    firstname: Superset
+    lastname: Admin
+    email: admin@superset.com
+    password: admin
+  # -- List of initContainers
+  # @default -- a container waiting for postgres
+  initContainers:
+    - name: wait-for-postgres
+      image: "{{ .Values.initImage.repository }}:{{ .Values.initImage.tag }}"
+      imagePullPolicy: "{{ .Values.initImage.pullPolicy }}"
+      envFrom:
+        - secretRef:
+            name: "{{ tpl .Values.envFromSecret . }}"
+      command:
+        - /bin/sh
+        - -c
+        - dockerize -wait "tcp://$DB_HOST:$DB_PORT" -timeout 120s
+  # -- A Superset init script
+  # @default -- a script to create admin user and initailize roles
+  initscript: |-
+    #!/bin/sh
+    set -eu
+    echo "Upgrading DB schema..."
+    superset db upgrade
+    echo "Initializing roles..."
+    superset init
+    {{ if .Values.init.createAdmin }}
+    echo "Creating admin user..."
+    superset fab create-admin \
+                    --username {{ .Values.init.adminUser.username }} \
+                    --firstname {{ .Values.init.adminUser.firstname }} \
+                    --lastname {{ .Values.init.adminUser.lastname }} \
+                    --email {{ .Values.init.adminUser.email }} \
+                    --password {{ .Values.init.adminUser.password }} \
+                    || true
+    {{- end }}
+    {{ if .Values.init.loadExamples }}
+    echo "Loading examples..."
+    superset load_examples
+    {{- end }}
+    if [ -f "{{ .Values.extraConfigMountPath }}/import_datasources.yaml" ]; then
+      echo "Importing database connections.... "
+      superset import_datasources -p {{ .Values.extraConfigMountPath }}/import_datasources.yaml
+    fi
+  ## Annotations to be added to init job pods
+  podAnnotations: {}
+  podSecurityContext: {}
+  containerSecurityContext: {}
+
+postgresql:
+  enabled: true
+  auth:
+    ## The name of an existing secret that contains the postgres password.
+    existingSecret:
+    ## PostgreSQL name for a custom user to create
+    username: superset
+    ## PostgreSQL password for the custom user to create. Ignored if `auth.existingSecret` with key `password` is provided
+    password: superset
+    ## PostgreSQL name for a custom database to create
+    database: superset
+  primary:
+    persistence:
+      enabled: true
+      ##
+      ## Persistant class
+      # storageClass: classname
+      ##
+      ## Access modes:
+      accessModes:
+        - ReadWriteOnce
+    ## PostgreSQL port
+    service:
+      ports:
+        postgresql: "5432"
+
+redis:
+  enabled: true
+  architecture: standalone
+  auth:
+    ## Enable password authentication
+    enabled: false
+    ## The name of an existing secret that contains the redis password.
+    existingSecret: ""
+    ## Name of the key containing the secret.
+    existingSecretKey: ""
+    ## Redis password
+    password: superset
