@@ -57,6 +57,8 @@ configOverrides:
     GUEST_ROLE_NAME = "Gamma"
     SUPERSET_WEBSERVER_TIMEOUT = 300
     CACHE_DEFAULT_TIMEOUT = 31536000
+    AUTH_USER_REGISTRATION = True
+    AUTH_USER_REGISTRATION_ROLE = "Gamma"
     D3_FORMAT = [
       {
         "decimal": ".",
