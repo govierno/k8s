@@ -1,0 +1,28 @@
+clusterDomain: marketshop.local
+replicaCount: 1
+image:
+  registry: docker.io
+  repository: bitnami/nginx
+  tag: 1.21.6-debian-10-r69
+hostAliases: []
+
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate: {}
+
+service:
+  type: ClusterIP
+
+ingress:
+  enabled: true
+  pathType: ImplementationSpecific
+  hostname: noticias.govierno.cl
+  path: /
+  annotations:
+    kubernetes.io/ingress.class: traefik
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+
+cloneStaticSiteFromGit:
+  enabled: true
+  repository: https://github.com/govierno/noticias.git
+  branch: main
