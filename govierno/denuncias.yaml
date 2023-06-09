@@ -19,7 +19,7 @@ spec:
         image: marketshop/sharetribe:latest
         ports:
         - containerPort: 3000
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         env:
           - name: DB_HOST
             value: "mysql-single.databases"
