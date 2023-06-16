@@ -14,6 +14,3 @@ master:
   persistence:
     enable: false
   disableCommands: []
-
-replica:
-  disableCommands: []
