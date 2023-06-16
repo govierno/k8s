@@ -11,6 +11,9 @@ clusterDomain: marketshop.local
 diagnosticMode:
   enabled: false
 
+nodeSelector:
+  node: node1
+
 auth:
   username: rabbitmq
   securePassword: true
