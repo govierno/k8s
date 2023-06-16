@@ -9,6 +9,8 @@ auth:
   enabled: false
 
 master:
+  nodeSelector:
+    node: node1
   persistence:
     enable: false
   disableCommands: []
